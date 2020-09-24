@@ -24,9 +24,11 @@ data <- mutate(data,
 
 
 ui <- fluidPage(
+  # Choosing the length of time to calculate normal HRV values
   selectInput(inputId = "basal_hrv_period", 
               label = "Length of basal HRV period:",
-              c("30 days", "60 days")),
+              choices = c("30 days", "60 days"),
+              selected = "30 days"), # default period for HRV values is 30 days
   plotOutput("hrv_plot")
   
 )
