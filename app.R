@@ -23,9 +23,13 @@ ui <- fluidPage(
   # Choosing the length of time to calculate normal HRV values
   selectInput(inputId = "basal_hrv_period", 
               label = "Length of basal HRV period:",
-              choices = c("30 days", 
-                          "60 days"),
-              selected = "30 days"), # default period for HRV values is 30 days
+              choices = c("30 days", "60 days"),
+              selected = "30 days"), # default period for normal HRV values is 30 days
+  
+  selectInput(inputId = "hrv_metric",
+              label = "HRV metric:",
+              choices = c("HRV4T Recovery Points", "ln rMSSD", "Resting HR"),
+              selected = "HRV4T Recovery Points"),
   
   plotOutput("hrv_plot"),
   
@@ -34,20 +38,59 @@ ui <- fluidPage(
 )
 
 server <- function(input, output) {
-  # Create new columns for different baselines
+  # Create new columns for different baselines:
+  # It changes depending on the time period for normal values and the HRV metric
+  
   
   dataInput <- reactive({
     basal_period <- switch(input$basal_hrv_period, 
-           "30 days" = 30,
-           "60 days" = 60)
+                           "30 days" = 30,
+                           "60 days" = 60)
     
-    data %>% mutate( 
-      recovery_7d = rollapply(HRV4T_Recovery_Points, 7, mean, na.rm = T, fill = NA, 
-                              align = "right"),
-      recovery_normal_values = rollapply(HRV4T_Recovery_Points, basal_period, mean, 
-                                         na.rm = T, fill = NA,  align = "right"),
-      recovery_normal_values_sd = rollapply(HRV4T_Recovery_Points, basal_period, sd, 
-                                            na.rm = T, fill = NA,  align = "right"))
+    
+    
+    if (input$hrv_metric == "HRV4T Recovery Points") {
+      data %>% 
+        
+        mutate(
+          weekly_average = rollapply(HRV4T_Recovery_Points, 7, mean, na.rm = TRUE, fill = NA, 
+                                  align = "right"),
+          normal_values = rollapply(HRV4T_Recovery_Points, basal_period, mean, na.rm = TRUE, 
+                                             fill = NA,  align = "right"),
+          normal_values_sd = rollapply(HRV4T_Recovery_Points, basal_period, sd, na.rm = TRUE, 
+                                                fill = NA,  align = "right"))      %>% 
+        
+        select(date, HRV4T_Recovery_Points, weekly_average, normal_values, normal_values_sd)
+      
+    } else if (input$hrv_metric == "ln rMSSD") {
+        data %>% 
+          mutate(ln_rMSSD = if_else(rMSSD != 0, log(rMSSD), NULL),
+                 weekly_average = rollapply(ln_rMSSD, 7, mean, na.rm = T, fill = NA, align = "right"),
+                 normal_values = rollapply(ln_rMSSD, basal_period, mean, na.rm = T, fill = NA, 
+                                           align = "right"),
+                 normal_values_sd = rollapply(ln_rMSSD, basal_period, sd, na.rm = TRUE, 
+                                              fill = NA,  align = "right")) %>%   
+            
+    
+          select(date, ln_rMSSD, weekly_average, normal_values, normal_values_sd)
+      
+          
+        
+    } else {
+      data %>% 
+        
+        mutate(
+          resting_HR = na_if(X.HR, 0),
+          weekly_average = rollapply(resting_HR, 7, mean, na.rm = TRUE, fill = NA, 
+                                     align = "right"),
+          normal_values = rollapply(resting_HR, basal_period, mean, na.rm = TRUE, 
+                                    fill = NA,  align = "right"),
+          normal_values_sd = rollapply(resting_HR, basal_period, sd, na.rm = TRUE, 
+                                       fill = NA,  align = "right"))      %>% 
+        
+        select(date, resting_HR, weekly_average, normal_values, normal_values_sd)
+      }
+    
   })
  
   
