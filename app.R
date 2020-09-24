@@ -8,10 +8,10 @@ fileCSV <- "data/MyMeasurements_Android.csv"
 # Problems with an empty column so I'll read the CSV without that last column
 data = read.csv(fileCSV, header = FALSE)[-65] # I know that with the empty column there're 65
 
-write.table(data, "clean.csv", sep = ",", row.names = FALSE, col.names = FALSE)
+write.table(data, "data/clean.csv", sep = ",", row.names = FALSE, col.names = FALSE)
 
 
-data <- read.csv("clean.csv")
+data <- read.csv("data/clean.csv")
 
 # Transform data to date format
 data <- mutate(data, date = ydm(as.character(date)))
