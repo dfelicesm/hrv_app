@@ -31,10 +31,9 @@ ui <- fluidPage(
               choices = c("HRV4T Recovery Points", "ln rMSSD", "Resting HR"),
               selected = "HRV4T Recovery Points"),
   
-  plotOutput("hrv_plot"),
+  plotOutput("hrv_plot")
   
-  tableOutput("table")
-  
+
 )
 
 server <- function(input, output) {
@@ -53,26 +52,27 @@ server <- function(input, output) {
       data %>% 
         
         mutate(
-          weekly_average = rollapply(HRV4T_Recovery_Points, 7, mean, na.rm = TRUE, fill = NA, 
+          metric = HRV4T_Recovery_Points,
+          weekly_average = rollapply(metric, 7, mean, na.rm = TRUE, fill = NA, 
                                   align = "right"),
-          normal_values = rollapply(HRV4T_Recovery_Points, basal_period, mean, na.rm = TRUE, 
+          normal_values = rollapply(metric, basal_period, mean, na.rm = TRUE, 
                                              fill = NA,  align = "right"),
-          normal_values_sd = rollapply(HRV4T_Recovery_Points, basal_period, sd, na.rm = TRUE, 
+          normal_values_sd = rollapply(metric, basal_period, sd, na.rm = TRUE, 
                                                 fill = NA,  align = "right"))      %>% 
         
-        select(date, HRV4T_Recovery_Points, weekly_average, normal_values, normal_values_sd)
+        select(date, metric, weekly_average, normal_values, normal_values_sd)
       
     } else if (input$hrv_metric == "ln rMSSD") {
         data %>% 
-          mutate(ln_rMSSD = if_else(rMSSD != 0, log(rMSSD), NULL),
-                 weekly_average = rollapply(ln_rMSSD, 7, mean, na.rm = T, fill = NA, align = "right"),
-                 normal_values = rollapply(ln_rMSSD, basal_period, mean, na.rm = T, fill = NA, 
+          mutate(metric = if_else(rMSSD != 0, log(rMSSD), NULL),
+                 weekly_average = rollapply(metric, 7, mean, na.rm = T, fill = NA, align = "right"),
+                 normal_values = rollapply(metric, basal_period, mean, na.rm = T, fill = NA, 
                                            align = "right"),
-                 normal_values_sd = rollapply(ln_rMSSD, basal_period, sd, na.rm = TRUE, 
+                 normal_values_sd = rollapply(metric, basal_period, sd, na.rm = TRUE, 
                                               fill = NA,  align = "right")) %>%   
             
     
-          select(date, ln_rMSSD, weekly_average, normal_values, normal_values_sd)
+          select(date, metric, weekly_average, normal_values, normal_values_sd)
       
           
         
@@ -80,21 +80,57 @@ server <- function(input, output) {
       data %>% 
         
         mutate(
-          resting_HR = na_if(X.HR, 0),
-          weekly_average = rollapply(resting_HR, 7, mean, na.rm = TRUE, fill = NA, 
+          metric = na_if(X.HR, 0),
+          weekly_average = rollapply(metric, 7, mean, na.rm = TRUE, fill = NA, 
                                      align = "right"),
-          normal_values = rollapply(resting_HR, basal_period, mean, na.rm = TRUE, 
+          normal_values = rollapply(metric, basal_period, mean, na.rm = TRUE, 
                                     fill = NA,  align = "right"),
-          normal_values_sd = rollapply(resting_HR, basal_period, sd, na.rm = TRUE, 
+          normal_values_sd = rollapply(metric, basal_period, sd, na.rm = TRUE, 
                                        fill = NA,  align = "right"))      %>% 
         
-        select(date, resting_HR, weekly_average, normal_values, normal_values_sd)
+        select(date, metric, weekly_average, normal_values, normal_values_sd)
       }
     
   })
  
   
-  output$table <- renderTable(dataInput())
+  output$hrv_plot <- renderPlot({
+    
+    ggplot(dataInput() %>% filter(date >= today() - days(60)), aes(date)) +
+      geom_bar(aes(y = metric), 
+               stat = "identity",
+               alpha = 0.3) +
+      geom_ribbon(aes(ymin = normal_values - 0.75*normal_values_sd, 
+                      ymax = normal_values + 0.75*normal_values_sd ),
+                  fill = "lightblue", 
+                  alpha = 0.5,
+                  color = "lightblue",
+                  linetype = 2)  +
+      geom_line(aes(y = weekly_average), 
+                color="steelblue", 
+                size=1.5) +
+      scale_x_date(name = '', date_breaks = '5 days',
+                   date_labels = '%d-%b-%y') +
+      scale_y_continuous(name = "",
+                         limits = c(0, 70)) +
+      ggtitle(toupper(input$hrv_metric)) + 
+      theme(plot.title = element_text( face = "bold", colour = "navyblue", size = 20),
+        axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) + 
+      if (input$hrv_metric == "HRV4T Recovery Points") {
+          
+          coord_cartesian(ylim = c(min(data$HRV4T_Recovery_Points, na.rm = TRUE), 
+                                   max(data$HRV4T_Recovery_Points, na.rm = TRUE)))
+      } else if (input$hrv_metric == "ln rMSSD") {
+        
+        coord_cartesian(ylim = c(log(min(data[data$rMSSD >0, "rMSSD"], na.rm = TRUE)), 
+                                 log(max(data$rMSSD, na.rm = TRUE))))
+      } else {
+        
+        coord_cartesian(ylim = c(min(data[data$X.HR > 0, "X.HR"], na.rm = TRUE), 
+                                 max(data$X.HR, na.rm = TRUE)))
+      }
+    
+  })
 }
 
 shinyApp(ui, server)
