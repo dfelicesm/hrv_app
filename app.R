@@ -16,12 +16,18 @@ data <- read.csv("clean.csv")
 # Transform data to date format
 data <- mutate(data, date = ydm(as.character(date)))
 
+# -----------------------------------------------------------------
+basal_period <- switch(input$basal_hrv_period, 
+       "30 days" = 30,
+       "60 days" = 60)
+
 # Create new columns for different baselines
 data <- mutate(data, 
                recovery_7d = rollapply(HRV4T_Recovery_Points, 7, mean, na.rm = T, fill = NA, align = "right"),
-               recovery_30d = rollapply(HRV4T_Recovery_Points, 30, mean, na.rm = T, fill = NA,  align = "right"),
-               recovery_30d_sd = rollapply(HRV4T_Recovery_Points, 30, sd, na.rm = T, fill = NA,  align = "right"))
+               recovery_normal_values = rollapply(HRV4T_Recovery_Points, basal_period, mean, na.rm = T, fill = NA,  align = "right"),
+               recovery_normal_values_sd = rollapply(HRV4T_Recovery_Points, basal_period, sd, na.rm = T, fill = NA,  align = "right"))
 
+# --------------------------------------------------------------------
 
 ui <- fluidPage(
   # Choosing the length of time to calculate normal HRV values
@@ -34,6 +40,8 @@ ui <- fluidPage(
 )
 
 server <- function(input, output) {
+  
+  
   output$hrv_plot <- renderPlot(ggplot(data %>% 
                                          select(date, HRV4T_Recovery_Points, recovery_7d, recovery_30d, recovery_30d_sd) %>%
                                          filter(date >= today() - days(60)),
