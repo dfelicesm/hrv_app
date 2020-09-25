@@ -36,9 +36,7 @@ ui <- fluidPage(
             label = "Load new data:",
             accept = ".csv"),
   
-  plotOutput("hrv_plot"),
-  
-  tableOutput("tail")
+  plotOutput("hrv_plot")
   
 
 )
@@ -63,15 +61,10 @@ server <- function(input, output) {
     write.table(temp_df, "data/last.csv", sep = ",", row.names = FALSE, col.names = FALSE)
     
     read.csv("data/last.csv")
-    #temp_df <- read.csv("data/test.csv")
-    
-    
-    
     
   })
   
-  output$tail <- renderTable(tail(new_df()))
-  
+
   # Create new columns for different baselines:
   # It changes depending on the time period for normal values and the HRV metric
   dataInput <- reactive({
