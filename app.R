@@ -31,6 +31,15 @@ ui <- fluidPage(
               choices = c("HRV4T Recovery Points", "ln rMSSD", "Resting HR"),
               selected = "HRV4T Recovery Points"),
   
+  dateRangeInput(inputId = "dates",
+                 label = "Dates:",
+                 start = today()-days(90),
+                 end = today(),
+                 min = "2000-01-01",
+                 max = today()+years(1),
+                 format = "dd/mm/yyyy",
+                 weekstart = 1),
+  
   plotOutput("hrv_plot")
   
 
@@ -110,12 +119,12 @@ server <- function(input, output) {
                 color="steelblue", 
                 size=1.5) +
       scale_x_date(name = '', date_breaks = '5 days',
-                   date_labels = '%d-%b-%y') +
+                   date_labels = '%d/%m/%Y') +
       scale_y_continuous(name = "",
                          limits = c(0, 70)) +
       ggtitle(toupper(input$hrv_metric)) + 
       theme(plot.title = element_text( face = "bold", colour = "navyblue", size = 20),
-        axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) + 
+        axis.text.x = element_text(angle = 45, vjust = 1, hjust=1, size = 11)) + 
       if (input$hrv_metric == "HRV4T Recovery Points") {
           
           coord_cartesian(ylim = c(min(data$HRV4T_Recovery_Points, na.rm = TRUE), 
