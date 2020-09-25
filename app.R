@@ -105,7 +105,7 @@ server <- function(input, output) {
   
   output$hrv_plot <- renderPlot({
     
-    ggplot(dataInput() %>% filter(date >= today() - days(60)), aes(date)) +
+    ggplot(dataInput() %>% filter(date >= input$dates[1], date <= input$dates[2]), aes(date)) +
       geom_bar(aes(y = metric), 
                stat = "identity",
                alpha = 0.3) +
