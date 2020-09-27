@@ -37,7 +37,6 @@ ui <- fluidPage(
             accept = ".csv"),
   
   plotOutput("hrv_plot")
-  
 
 )
 
@@ -72,6 +71,9 @@ server <- function(input, output) {
                            "30 days" = 30,
                            "60 days" = 60)
     
+    if (is.data.frame(new_df())){
+      data <- new_df() %>% mutate(date = ydm(as.character(date)))
+    }
     
     
     if (input$hrv_metric == "HRV4T Recovery Points") {
@@ -119,7 +121,6 @@ server <- function(input, output) {
     
   })
  
-  
   output$hrv_plot <- renderPlot({
     
     ggplot(dataInput() %>% filter(date >= input$dates[1], date <= input$dates[2]), aes(date)) +
