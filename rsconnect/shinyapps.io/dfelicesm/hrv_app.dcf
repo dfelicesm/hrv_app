@@ -1,0 +1,12 @@
+name: hrv_app
+title: hrv_app
+username:
+account: dfelicesm
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 2896131
+bundleId: 3675699
+url: https://dfelicesm.shinyapps.io/hrv_app/
+when: 1601207636.43636
+asMultiple: FALSE
+asStatic: FALSE

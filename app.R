@@ -4,14 +4,7 @@ library(zoo)
 library(ggplot2)
 library(lubridate)
 
-fileCSV <- "data/MyMeasurements_Android.csv"
-# Problems with an empty column so I'll read the CSV without that last column
-data = read.csv(fileCSV, header = FALSE)[-65] # I know that with the empty column there're 65
-
-write.table(data, "data/clean.csv", sep = ",", row.names = FALSE, col.names = FALSE)
-
-
-data <- read.csv("data/clean.csv")
+data <- read.csv("data/last.csv")
 
 # Transform data to date format
 data <- mutate(data, date = ydm(as.character(date)))
@@ -39,6 +32,9 @@ ui <- fluidPage(
                  max = today()+years(1),
                  format = "dd/mm/yyyy",
                  weekstart = 1),
+  fileInput(inputId = "input_CSV",
+            label = "Load new data:",
+            accept = ".csv"),
   
   plotOutput("hrv_plot")
   
@@ -46,10 +42,31 @@ ui <- fluidPage(
 )
 
 server <- function(input, output) {
+  
+  new_df <- reactive({
+    
+    inFile <- input$input_CSV
+    
+    if (is.null(inFile)) {
+      # User has not uploaded a file yet
+      return(NULL)
+    } else {
+      temp_df <- req(inFile)
+    }
+    
+    temp_df <- read.csv(inFile$datapath, header = FALSE)[-65]
+    
+    
+    
+    write.table(temp_df, "data/last.csv", sep = ",", row.names = FALSE, col.names = FALSE)
+    
+    read.csv("data/last.csv")
+    
+  })
+  
+
   # Create new columns for different baselines:
   # It changes depending on the time period for normal values and the HRV metric
-  
-  
   dataInput <- reactive({
     basal_period <- switch(input$basal_hrv_period, 
                            "30 days" = 30,
