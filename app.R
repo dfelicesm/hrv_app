@@ -71,6 +71,8 @@ server <- function(input, output) {
                            "30 days" = 30,
                            "60 days" = 60)
     
+    
+    # updata data source if new data has been added
     if (is.data.frame(new_df())){
       data <- new_df() %>% mutate(date = ydm(as.character(date)))
     }

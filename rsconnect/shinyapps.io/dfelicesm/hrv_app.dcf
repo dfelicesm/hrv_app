@@ -5,8 +5,8 @@ account: dfelicesm
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 2896131
-bundleId: 3675747
+bundleId: 3676053
 url: https://dfelicesm.shinyapps.io/hrv_app/
-when: 1601208968.40598
+when: 1601219954.7688
 asMultiple: FALSE
 asStatic: FALSE
