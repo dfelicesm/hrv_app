@@ -76,54 +76,30 @@ server <- function(input, output) {
     }
     
     
-    if (input$hrv_metric == "HRV4T Recovery Points") {
-      data %>% 
-        
-        mutate(
-          metric = HRV4T_Recovery_Points,
-          weekly_average = rollapply(metric, 7, mean, na.rm = TRUE, fill = NA, 
-                                  align = "right"),
-          normal_values = rollapply(metric, basal_period, mean, na.rm = TRUE, 
-                                             fill = NA,  align = "right"),
-          normal_values_sd = rollapply(metric, basal_period, sd, na.rm = TRUE, 
-                                                fill = NA,  align = "right"))      %>% 
-        
-        select(date, metric, weekly_average, normal_values, normal_values_sd)
-      
-    } else if (input$hrv_metric == "ln rMSSD") {
-        data %>% 
-          mutate(metric = if_else(rMSSD != 0, log(rMSSD), NULL),
-                 weekly_average = rollapply(metric, 7, mean, na.rm = T, fill = NA, align = "right"),
-                 normal_values = rollapply(metric, basal_period, mean, na.rm = T, fill = NA, 
-                                           align = "right"),
-                 normal_values_sd = rollapply(metric, basal_period, sd, na.rm = TRUE, 
-                                              fill = NA,  align = "right")) %>%   
-            
+    metric <- switch(input$hrv_metric, 
+                           "HRV4T Recovery Points" = data$HRV4T_Recovery_Points,
+                           "ln rMSSD" = if_else(data$rMSSD != 0, log(data$rMSSD), NULL),
+                           "Resting HR" = if_else(data$X.HR != 0, data$X.HR, NULL))
     
-          select(date, metric, weekly_average, normal_values, normal_values_sd)
-      
-          
-        
-    } else {
-      data %>% 
-        
-        mutate(
-          metric = na_if(X.HR, 0),
-          weekly_average = rollapply(metric, 7, mean, na.rm = TRUE, fill = NA, 
-                                     align = "right"),
-          normal_values = rollapply(metric, basal_period, mean, na.rm = TRUE, 
-                                    fill = NA,  align = "right"),
-          normal_values_sd = rollapply(metric, basal_period, sd, na.rm = TRUE, 
-                                       fill = NA,  align = "right"))      %>% 
-        
-        select(date, metric, weekly_average, normal_values, normal_values_sd)
-      }
     
+    data %>% 
+      
+      mutate(
+        metric = metric,
+        weekly_average = rollapply(metric, 7, mean, na.rm = TRUE, fill = NA, 
+                                   align = "right"),
+        normal_values = rollapply(metric, basal_period, mean, na.rm = TRUE, 
+                                  fill = NA,  align = "right"),
+        normal_values_sd = rollapply(metric, basal_period, sd, na.rm = TRUE, 
+                                     fill = NA,  align = "right"))      %>% 
+      
+      select(date, metric, weekly_average, normal_values, normal_values_sd)
   })
  
   output$hrv_plot <- renderPlot({
     
-    ggplot(dataInput() %>% filter(date >= input$dates[1], date <= input$dates[2]), aes(date)) +
+    ggplot(dataInput() %>% 
+             filter(date >= input$dates[1], date <= input$dates[2]), aes(date)) +
       geom_col(aes(x= date, y = metric), 
                alpha = 0.3) +
       geom_ribbon(aes(ymin = normal_values - 0.75*normal_values_sd, 
