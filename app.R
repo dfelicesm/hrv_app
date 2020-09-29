@@ -71,19 +71,19 @@ server <- function(input, output) {
                            "30 days" = 30,
                            "60 days" = 60)
     
+    # Update the data source if a new file has been uploaded
     if (is.data.frame(new_df())){
       data <- new_df() %>% mutate(date = ydm(as.character(date)))
     }
     
-    
+    # Relate the chosen metric to a vector
     metric <- switch(input$hrv_metric, 
-                           "HRV4T Recovery Points" = data$HRV4T_Recovery_Points,
-                           "ln rMSSD" = if_else(data$rMSSD != 0, log(data$rMSSD), NULL),
-                           "Resting HR" = if_else(data$X.HR != 0, data$X.HR, NULL))
-    
+                     "HRV4T Recovery Points" = data$HRV4T_Recovery_Points,
+                     "ln rMSSD" = if_else(data$rMSSD != 0, log(data$rMSSD), NULL), # calculate ln except for 0
+                     "Resting HR" = if_else(data$X.HR != 0, data$X.HR, NULL)) # transform zeros into NULL
+
     
     data %>% 
-      
       mutate(
         metric = metric,
         weekly_average = rollapply(metric, 7, mean, na.rm = TRUE, fill = NA, 
@@ -98,17 +98,18 @@ server <- function(input, output) {
  
   output$hrv_plot <- renderPlot({
     
-    ggplot(dataInput() %>% 
-             filter(date >= input$dates[1], date <= input$dates[2]), aes(date)) +
-      geom_col(aes(x= date, y = metric), 
+    ggplot(data = dataInput() %>% 
+             filter(date >= input$dates[1], date <= input$dates[2]), 
+           mapping = aes(date)) +
+      geom_col(mapping = aes(y = metric), 
                alpha = 0.3) +
-      geom_ribbon(aes(ymin = normal_values - 0.75*normal_values_sd, 
-                      ymax = normal_values + 0.75*normal_values_sd ),
+      geom_ribbon(mapping = aes(ymin = normal_values - 0.75*normal_values_sd, 
+                                ymax = normal_values + 0.75*normal_values_sd ),
                   fill = "lightblue", 
                   alpha = 0.5,
                   color = "lightblue",
                   linetype = 2)  +
-      geom_line(aes(y = weekly_average), 
+      geom_line(mapping = aes(y = weekly_average), 
                 color="steelblue", 
                 size=1.5) +
       scale_x_date(name = '', date_breaks = '5 days',
