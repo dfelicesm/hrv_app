@@ -124,8 +124,7 @@ server <- function(input, output) {
   output$hrv_plot <- renderPlot({
     
     ggplot(dataInput() %>% filter(date >= input$dates[1], date <= input$dates[2]), aes(date)) +
-      geom_bar(aes(y = metric), 
-               stat = "identity",
+      geom_col(aes(x= date, y = metric), 
                alpha = 0.3) +
       geom_ribbon(aes(ymin = normal_values - 0.75*normal_values_sd, 
                       ymax = normal_values + 0.75*normal_values_sd ),
