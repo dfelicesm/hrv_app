@@ -119,19 +119,8 @@ server <- function(input, output) {
       ggtitle(toupper(input$hrv_metric)) + 
       theme(plot.title = element_text( face = "bold", colour = "navyblue", size = 20),
         axis.text.x = element_text(angle = 45, vjust = 1, hjust=1, size = 11)) + 
-      if (input$hrv_metric == "HRV4T Recovery Points") {
-          
-          coord_cartesian(ylim = c(min(data$HRV4T_Recovery_Points, na.rm = TRUE), 
-                                   max(data$HRV4T_Recovery_Points, na.rm = TRUE)))
-      } else if (input$hrv_metric == "ln rMSSD") {
-        
-        coord_cartesian(ylim = c(log(min(data[data$rMSSD >0, "rMSSD"], na.rm = TRUE)), 
-                                 log(max(data$rMSSD, na.rm = TRUE))))
-      } else {
-        
-        coord_cartesian(ylim = c(min(data[data$X.HR > 0, "X.HR"], na.rm = TRUE), 
-                                 max(data$X.HR, na.rm = TRUE)))
-      }
+      coord_cartesian(ylim = c(min(dataInput()$metric, na.rm = TRUE), 
+                               max(dataInput()$metric, na.rm = TRUE)))
     
   })
 }
