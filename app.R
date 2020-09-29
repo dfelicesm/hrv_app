@@ -42,10 +42,12 @@ ui <- fluidPage(
 
 server <- function(input, output) {
   
+  # Create new_df if new data is uploaded to the app
   new_df <- reactive({
     
     inFile <- input$input_CSV
     
+    # Check if data is uploaded
     if (is.null(inFile)) {
       # User has not uploaded a file yet
       return(NULL)
@@ -53,12 +55,14 @@ server <- function(input, output) {
       temp_df <- req(inFile)
     }
     
+    # Read the data uploaded, avoiding issues with extra , in the HRV4T file
     temp_df <- read.csv(inFile$datapath, header = FALSE)[-65]
     
     
-    
+    # Update the data stored in the data folder
     write.table(temp_df, "data/last.csv", sep = ",", row.names = FALSE, col.names = FALSE)
     
+    # Read the new df
     read.csv("data/last.csv")
     
   })
@@ -82,7 +86,7 @@ server <- function(input, output) {
                      "ln rMSSD" = if_else(data$rMSSD != 0, log(data$rMSSD), NULL), # calculate ln except for 0
                      "Resting HR" = if_else(data$X.HR != 0, data$X.HR, NULL)) # transform zeros into NULL
 
-    
+    # Create the variables that we want to plot
     data %>% 
       mutate(
         metric = metric,
