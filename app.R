@@ -42,10 +42,12 @@ ui <- fluidPage(
 
 server <- function(input, output) {
   
+  # Create new_df if new data is uploaded to the app
   new_df <- reactive({
     
     inFile <- input$input_CSV
     
+    # Check if data is uploaded
     if (is.null(inFile)) {
       # User has not uploaded a file yet
       return(NULL)
@@ -53,12 +55,14 @@ server <- function(input, output) {
       temp_df <- req(inFile)
     }
     
+    # Read the data uploaded, avoiding issues with extra , in the HRV4T file
     temp_df <- read.csv(inFile$datapath, header = FALSE)[-65]
     
     
-    
+    # Update the data stored in the data folder
     write.table(temp_df, "data/last.csv", sep = ",", row.names = FALSE, col.names = FALSE)
     
+    # Read the new df
     read.csv("data/last.csv")
     
   })
@@ -71,71 +75,45 @@ server <- function(input, output) {
                            "30 days" = 30,
                            "60 days" = 60)
     
-    
-    # updata data source if new data has been added
+    # update data source if new data has been added
     if (is.data.frame(new_df())){
       data <- new_df() %>% mutate(date = ydm(as.character(date)))
     }
     
-    
-    if (input$hrv_metric == "HRV4T Recovery Points") {
-      data %>% 
-        
-        mutate(
-          metric = HRV4T_Recovery_Points,
-          weekly_average = rollapply(metric, 7, mean, na.rm = TRUE, fill = NA, 
-                                  align = "right"),
-          normal_values = rollapply(metric, basal_period, mean, na.rm = TRUE, 
-                                             fill = NA,  align = "right"),
-          normal_values_sd = rollapply(metric, basal_period, sd, na.rm = TRUE, 
-                                                fill = NA,  align = "right"))      %>% 
-        
-        select(date, metric, weekly_average, normal_values, normal_values_sd)
+    # Relate the chosen metric to a vector
+    metric <- switch(input$hrv_metric, 
+                     "HRV4T Recovery Points" = data$HRV4T_Recovery_Points,
+                     "ln rMSSD" = if_else(data$rMSSD != 0, log(data$rMSSD), NULL), # calculate ln except for 0
+                     "Resting HR" = if_else(data$X.HR != 0, data$X.HR, NULL)) # transform zeros into NULL
+
+    # Create the variables that we want to plot
+    data %>% 
+      mutate(
+        metric = metric,
+        weekly_average = rollapply(metric, 7, mean, na.rm = TRUE, fill = NA, 
+                                   align = "right"),
+        normal_values = rollapply(metric, basal_period, mean, na.rm = TRUE, 
+                                  fill = NA,  align = "right"),
+        normal_values_sd = rollapply(metric, basal_period, sd, na.rm = TRUE, 
+                                     fill = NA,  align = "right"))      %>% 
       
-    } else if (input$hrv_metric == "ln rMSSD") {
-        data %>% 
-          mutate(metric = if_else(rMSSD != 0, log(rMSSD), NULL),
-                 weekly_average = rollapply(metric, 7, mean, na.rm = T, fill = NA, align = "right"),
-                 normal_values = rollapply(metric, basal_period, mean, na.rm = T, fill = NA, 
-                                           align = "right"),
-                 normal_values_sd = rollapply(metric, basal_period, sd, na.rm = TRUE, 
-                                              fill = NA,  align = "right")) %>%   
-            
-    
-          select(date, metric, weekly_average, normal_values, normal_values_sd)
-      
-          
-        
-    } else {
-      data %>% 
-        
-        mutate(
-          metric = na_if(X.HR, 0),
-          weekly_average = rollapply(metric, 7, mean, na.rm = TRUE, fill = NA, 
-                                     align = "right"),
-          normal_values = rollapply(metric, basal_period, mean, na.rm = TRUE, 
-                                    fill = NA,  align = "right"),
-          normal_values_sd = rollapply(metric, basal_period, sd, na.rm = TRUE, 
-                                       fill = NA,  align = "right"))      %>% 
-        
-        select(date, metric, weekly_average, normal_values, normal_values_sd)
-      }
-    
+      select(date, metric, weekly_average, normal_values, normal_values_sd)
   })
  
   output$hrv_plot <- renderPlot({
     
-    ggplot(dataInput() %>% filter(date >= input$dates[1], date <= input$dates[2]), aes(date)) +
-      geom_bar(aes(y = metric), 
-               stat = "identity",
+    ggplot(data = dataInput() %>% 
+             filter(date >= input$dates[1], date <= input$dates[2]), 
+           mapping = aes(date)) +
+      geom_col(mapping = aes(y = metric), 
                alpha = 0.3) +
-      geom_ribbon(aes(ymin = normal_values - 0.75*normal_values_sd, 
-                      ymax = normal_values + 0.75*normal_values_sd ),
+      geom_ribbon(mapping = aes(ymin = normal_values - 0.75*normal_values_sd, 
+                                ymax = normal_values + 0.75*normal_values_sd ),
                   fill = "lightblue", 
                   alpha = 0.5,
                   color = "lightblue",
                   linetype = 2)  +
-      geom_line(aes(y = weekly_average), 
+      geom_line(mapping = aes(y = weekly_average), 
                 color="steelblue", 
                 size=1.5) +
       scale_x_date(name = '', date_breaks = '5 days',
@@ -145,19 +123,8 @@ server <- function(input, output) {
       ggtitle(toupper(input$hrv_metric)) + 
       theme(plot.title = element_text( face = "bold", colour = "navyblue", size = 20),
         axis.text.x = element_text(angle = 45, vjust = 1, hjust=1, size = 11)) + 
-      if (input$hrv_metric == "HRV4T Recovery Points") {
-          
-          coord_cartesian(ylim = c(min(data$HRV4T_Recovery_Points, na.rm = TRUE), 
-                                   max(data$HRV4T_Recovery_Points, na.rm = TRUE)))
-      } else if (input$hrv_metric == "ln rMSSD") {
-        
-        coord_cartesian(ylim = c(log(min(data[data$rMSSD >0, "rMSSD"], na.rm = TRUE)), 
-                                 log(max(data$rMSSD, na.rm = TRUE))))
-      } else {
-        
-        coord_cartesian(ylim = c(min(data[data$X.HR > 0, "X.HR"], na.rm = TRUE), 
-                                 max(data$X.HR, na.rm = TRUE)))
-      }
+      coord_cartesian(ylim = c(min(dataInput()$metric, na.rm = TRUE), 
+                               max(dataInput()$metric, na.rm = TRUE)))
     
   })
 }
